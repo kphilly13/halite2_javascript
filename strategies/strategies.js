@@ -7,6 +7,7 @@ const Geometry = require('../hlt/Geometry');
  * @returns {string[]} moves that needs to be taken. null values are ignored
  */
 function defaultStrategy(gameMap) {
+
     // Here we build the set of commands to be sent to the Halite engine at the end of the turn
     // one ship - one command
     // in this particular strategy we only give new commands to ships that are not docked
@@ -14,16 +15,16 @@ function defaultStrategy(gameMap) {
         .filter(s => s.isUndocked())
         .map(ship => {
             // find the planets that are free or occupied by you
-            const planetsOfInterest = gameMap.planets.filter(p => p.isFree() ||
-                (p.isOwnedByMe() && p.hasDockingSpot() ));
+            const planetsOfInterest = gameMap.planets.filter(planet => planet.isFree() ||
+                (planet.isOwnedByMe() && planet.hasDockingSpot() ));
 
             if (planetsOfInterest.length === 0) {
                 return null; // if all the planets are taken we return null - no move for this ship
             }
 
             // sorting planets based on the distance to the ship
-            const sortedPlants = [...planetsOfInterest].sort((a, b) => Geometry.distance(ship, a) - Geometry.distance(ship, b));
-            const chosenPlanet = sortedPlants[0];
+            const sortedPlanets = [...planetsOfInterest].sort((a, b) => Geometry.distance(ship, a) - Geometry.distance(ship, b));
+            const chosenPlanet = sortedPlanets[0];
 
             if (ship.canDock(chosenPlanet)) {
                 return ship.dock(chosenPlanet);
@@ -48,6 +49,58 @@ function defaultStrategy(gameMap) {
     return moves; // return moves assigned to our ships for the Halite engine to take
 }
 
+function kThorStrategy1(gameMap) {
+
+  var planetIdx = 0;
+
+  // Here we build the set of commands to be sent to the Halite engine at the end of the turn
+  // one ship - one command
+  // in this particular strategy we only give new commands to ships that are not docked
+  const moves = gameMap.myShips
+    .filter(s => s.isUndocked())
+    .map(ship => {
+      // find the planets that are free or occupied by you
+      const planetsOfInterest = gameMap.planets.filter(planet => planet.isFree() ||
+        (planet.isOwnedByMe() && planet.hasDockingSpot() ));
+
+      if (planetsOfInterest.length === 0) {
+        return null; // if all the planets are taken we return null - no move for this ship
+      }
+
+      // sorting planets based on the distance to the ship
+      const sortedPlanets = [...planetsOfInterest].sort((a, b) => Geometry.distance(ship, a) - Geometry.distance(ship, b));
+      // const chosenPlanet = sortedPlanets[0];
+      const chosenPlanet = sortedPlanets[planetIdx];
+      if (planetIdx+1 <= planetsOfInterest.length) {
+        planetIdx++;
+      }
+      else {
+        planetIdx = 0;
+      }
+
+      if (ship.canDock(chosenPlanet)) {
+        return ship.dock(chosenPlanet);
+      } else {
+        /*
+         If we can't dock, we approach the planet with constant speed.
+         Don't worry about pathfinding for now, as the command will do it for you.
+         We run this navigate command each turn until we arrive to get the latest move.
+         Here we move at half our maximum speed to better control the ships.
+         Navigate command is an example and most likely you will have to design your own.
+         */
+        return ship.navigate({
+          target: chosenPlanet,
+          keepDistanceToTarget: chosenPlanet.radius + 3,
+          speed: constants.MAX_SPEED / 2,
+          avoidObstacles: true,
+          ignoreShips: false
+        });
+      }
+    });
+
+  return moves; // return moves assigned to our ships for the Halite engine to take
+}
+
 function westernDuel(gameMap) {
     const ship = gameMap.myShips[0];
     const thrustMove = ship.navigate({
@@ -60,4 +113,4 @@ function westernDuel(gameMap) {
     return [thrustMove];
 }
 
-module.exports = {defaultStrategy, westernDuel};
+module.exports = {defaultStrategy, kThorStrategy1, westernDuel};
